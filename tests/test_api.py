@@ -83,3 +83,27 @@ def test_risk_survives_opensky_failure(client, monkeypatch):
     body = resp.json()
     assert body["live_traffic_congestion"] is None
     assert "OpenSky indisponible" in body["live_traffic_error"]
+
+
+def test_risk_reports_friendly_message_on_connection_error(client, monkeypatch):
+    """Some hosting providers (observed on Render) can't reach OpenSky at all --
+    this should degrade to a clear, non-technical message rather than a raw
+    Python exception string. See src/api.py and README."""
+    import requests
+
+    fake_weather = {
+        "temperature_2m": 18.0, "windspeed_10m": 10.0, "windgusts_10m": 15.0,
+        "precipitation": 0.0, "cloudcover": 20, "time": "2026-09-18T12:00",
+    }
+
+    def boom(lat, lon):
+        raise requests.exceptions.ConnectionError("Max retries exceeded...")
+
+    monkeypatch.setattr("src.api.current_hourly_snapshot", lambda lat, lon: fake_weather)
+    monkeypatch.setattr("src.api.congestion_features", boom)
+
+    resp = client.get("/risk/LFMN")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["live_traffic_congestion"] is None
+    assert "inaccessible depuis ce serveur d'hébergement" in body["live_traffic_error"]

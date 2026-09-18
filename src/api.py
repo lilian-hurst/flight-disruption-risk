@@ -19,6 +19,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+import requests
 import xgboost as xgb
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
@@ -114,7 +115,16 @@ def risk(icao: str):
     try:
         congestion = congestion_features(airport["lat"], airport["lon"])
         congestion_error = None
-    except Exception as e:  # OpenSky can rate-limit anonymous callers
+    except requests.exceptions.ConnectionError:
+        # Observed on some hosting providers (e.g. Render free tier): OpenSky
+        # is unreachable from their IP range, even though it works fine from
+        # a residential/dev connection. Documented in README.
+        congestion = None
+        congestion_error = (
+            "OpenSky Network est inaccessible depuis ce serveur d'hébergement "
+            "(fonctionne en local / Docker — voir README)."
+        )
+    except Exception as e:  # any other failure (rate-limit, timeout, ...)
         congestion = None
         congestion_error = str(e)
 

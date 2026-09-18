@@ -23,6 +23,12 @@ STATE_FIELDS = [
 BOX_DEGREES = 0.6  # ~65km around the airport, enough to capture approach/departure traffic
 LOW_ALTITUDE_M = 3000  # aircraft below this are considered in approach/climb-out phase
 
+# Some hosting providers' IP ranges get a slow/dropped connection from OpenSky
+# (observed on Render's free tier: consistent connect-timeout, works fine from
+# a residential/dev IP -- see README "Limites et méthodologie"). Keep this
+# short so a blocked connection fails fast instead of stalling the request.
+CONNECT_TIMEOUT_S = 6
+
 
 def fetch_states_near(lat: float, lon: float, box_degrees: float = BOX_DEGREES) -> list[dict]:
     """Fetch live aircraft states within a bounding box around (lat, lon)."""
@@ -32,7 +38,7 @@ def fetch_states_near(lat: float, lon: float, box_degrees: float = BOX_DEGREES) 
         "lomin": lon - box_degrees,
         "lomax": lon + box_degrees,
     }
-    resp = requests.get(STATES_URL, params=params, timeout=20)
+    resp = requests.get(STATES_URL, params=params, timeout=CONNECT_TIMEOUT_S)
     resp.raise_for_status()
     payload = resp.json()
     states = payload.get("states") or []

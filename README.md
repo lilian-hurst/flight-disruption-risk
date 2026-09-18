@@ -1,5 +1,10 @@
 # Flight Disruption Risk Predictor
 
+🔗 **Démo en ligne : [flight-disruption-risk.onrender.com](https://flight-disruption-risk.onrender.com)**
+(hébergement gratuit Render — le service se met en veille après 15 min d'inactivité, ~1 minute pour se réveiller au premier appel)
+
+Code source : [github.com/lilian-hurst/flight-disruption-risk](https://github.com/lilian-hurst/flight-disruption-risk)
+
 Prévision à +3h du risque de perturbation météo pour un aéroport, combinée à la congestion aérienne en direct. Construit comme projet portfolio ciblant les stages **Amadeus** (Data Scientist / Data Engineer), et réutilisable pour **Thales** (dataviz dans une chaîne MLOps) et **Artefact/Bel Group/Fleury Michon/Sézane** (data engineering + ML de bout en bout).
 
 ## Ce que fait le projet
@@ -29,6 +34,8 @@ Les endpoints historiques d'OpenSky (`/flights/departure`, `/flights/arrival`) n
 
 **Comment brancher de vrais retards mesurés** : créer un compte OpenSky gratuit (accès aux endpoints historiques), ou utiliser un jeu de données de ponctualité (ex. DOT/BTS, Eurocontrol Network Manager), et remplacer `label_disruption_risk()` dans `src/build_dataset.py` par une jointure sur des retards réels.
 
+**Limite connue sur le déploiement en ligne (Render)** : OpenSky Network est injoignable depuis les serveurs Render (timeout de connexion systématique, vérifié à plusieurs reprises), alors qu'il répond normalement en local et en Docker local — probablement un blocage réseau côté OpenSky visant certaines plages d'IP d'hébergeurs cloud. Résultat : sur la démo en ligne, la **prédiction météo (le cœur du projet) fonctionne parfaitement avec de vraies données**, mais le bloc "trafic aérien en direct" affiche un message d'indisponibilité au lieu des données OpenSky. Le code gère ce cas proprement (message clair, pas de crash) plutôt que de le masquer — voir `src/api.py`. En local ou dans le conteneur Docker, cette limite n'existe pas.
+
 ## Structure du projet
 
 ```
@@ -40,7 +47,7 @@ flight-delay-predictor/
 │   ├── build_dataset.py   # Construction du jeu d'entraînement (météo réelle + label proxy)
 │   ├── train.py           # Entraînement XGBoost + métriques + suivi CodeCarbon
 │   └── api.py              # API FastAPI de scoring en direct
-├── tests/                  # 15 tests pytest (logique de features + API, réseau mocké)
+├── tests/                  # 17 tests pytest (logique de features + API, réseau mocké)
 ├── models/                  # Modèle entraîné, encodeur, métriques (versionnés)
 ├── data/                    # Jeu de données d'entraînement (régénérable, non versionné)
 ├── requirements.txt
@@ -116,7 +123,8 @@ Aéroports disponibles : `LFPG` (Paris CDG), `LFPO` (Paris Orly), `LFMN` (Nice),
 - Entraînement XGBoost réel avec suivi CodeCarbon réel
 - Build Docker réel (image construite avec succès), avec l'interface graphique incluse
 - Conteneur Docker lancé et interrogé avec succès (requête réelle aboutie, réponse correcte, page `/` servie)
-- 16 tests pytest, tous passants
+- 17 tests pytest, tous passants
+- **Déploiement réel sur Render vérifié en ligne** : `/health`, `/` (interface) et `/risk/{icao}` testés depuis l'extérieur après mise en ligne, prédiction ML confirmée fonctionnelle avec de vraies données météo (le bloc trafic OpenSky est indisponible spécifiquement depuis Render — voir section méthodologie)
 
 ## Pistes d'extension (voir `projets_thales_dassault_amadeus.md` pour le contexte complet)
 - Dashboard Streamlit/Dash branché sur l'historique des prédictions (pour la piste Thales — visualisation dans une chaîne MLOps)
