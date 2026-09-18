@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flight Disruption Risk</title>
+<style>
+  :root {
+    --bg: #0b1220;
+    --panel: #121b2e;
+    --panel-2: #182238;
+    --border: #253150;
+    --text: #e8edf7;
+    --muted: #93a1c2;
+    --accent: #4fa3ff;
+    --low: #34c77b;
+    --mid: #f5b83d;
+    --high: #f0554e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    background: radial-gradient(1200px 600px at 20% -10%, #17233d 0%, var(--bg) 60%);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px 60px;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 28px; }
+  header h1 { font-size: 1.6rem; margin: 0 0 6px; letter-spacing: 0.2px; }
+  header p { color: var(--muted); margin: 0; font-size: 0.92rem; }
+  .badge-real {
+    display: inline-block; margin-top: 10px; font-size: 0.72rem; color: var(--low);
+    border: 1px solid var(--low); border-radius: 999px; padding: 3px 10px;
+  }
+
+  .controls {
+    display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 22px;
+  }
+  select, button {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 14px; font-size: 0.95rem; cursor: pointer;
+  }
+  select { min-width: 240px; }
+  button.primary { background: var(--accent); color: #05101f; border: none; font-weight: 600; }
+  button.primary:hover { filter: brightness(1.08); }
+  button:hover { border-color: var(--accent); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 16px;
+    padding: 22px; margin-bottom: 18px;
+  }
+  .card h2 { margin: 0 0 4px; font-size: 1.15rem; }
+  .card .sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 16px; }
+
+  .risk-row { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  .risk-score {
+    font-size: 2.4rem; font-weight: 700; min-width: 110px;
+  }
+  .risk-pill {
+    display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px;
+    border-radius: 999px; font-weight: 600; font-size: 0.95rem;
+  }
+  .risk-pill .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .risk-low { background: rgba(52,199,123,0.12); color: var(--low); }
+  .risk-low .dot { background: var(--low); }
+  .risk-mid { background: rgba(245,184,61,0.12); color: var(--mid); }
+  .risk-mid .dot { background: var(--mid); }
+  .risk-high { background: rgba(240,85,78,0.12); color: var(--high); }
+  .risk-high .dot { background: var(--high); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-top: 18px; }
+  .stat { background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  .stat .label { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat .value { font-size: 1.3rem; font-weight: 600; margin-top: 4px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 500; font-size: 0.78rem; text-transform: uppercase; }
+  tr:last-child td { border-bottom: none; }
+
+  .muted { color: var(--muted); }
+  .footer { text-align: center; color: var(--muted); font-size: 0.8rem; margin-top: 30px; }
+  .footer a { color: var(--accent); text-decoration: none; }
+  .spinner {
+    width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; display: inline-block; animation: spin 0.7s linear infinite; vertical-align: -3px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-box {
+    background: rgba(240,85,78,0.1); border: 1px solid var(--high); color: var(--high);
+    border-radius: 10px; padding: 12px 16px; font-size: 0.88rem;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>✈️ Flight Disruption Risk</h1>
+    <p>Prévision météo à +3h et congestion aérienne en direct, à partir de données publiques réelles</p>
+    <span class="badge-real">● Données live — OpenSky Network + Open-Meteo</span>
+  </header>
+
+  <div class="controls">
+    <select id="airport-select"></select>
+    <button class="primary" id="check-btn">Vérifier le risque</button>
+    <button id="compare-btn">Comparer tous les aéroports</button>
+  </div>
+
+  <div id="single-view"></div>
+  <div id="compare-view"></div>
+
+  <div class="footer">
+    API : <a href="/docs" target="_blank">/docs</a> (Swagger) ·
+    <a href="https://github.com" target="_blank" id="repo-link">code source</a> ·
+    Projet portfolio — non affilié à Amadeus/Thales/Dassault Systèmes
+  </div>
+</div>
+
+<script>
+const AIRPORTS = {
+  LFPG: "Paris Charles de Gaulle (CDG)",
+  LFPO: "Paris Orly (ORY)",
+  LFMN: "Nice Côte d'Azur (NCE)",
+  LFLL: "Lyon Saint-Exupéry (LYS)",
+  EDDF: "Frankfurt am Main (FRA)",
+  EHAM: "Amsterdam Schiphol (AMS)",
+  EGLL: "London Heathrow (LHR)",
+  LEMD: "Madrid Barajas (MAD)",
+};
+
+const select = document.getElementById("airport-select");
+for (const [icao, name] of Object.entries(AIRPORTS)) {
+  const opt = document.createElement("option");
+  opt.value = icao;
+  opt.textContent = `${name} — ${icao}`;
+  select.appendChild(opt);
+}
+
+const singleView = document.getElementById("single-view");
+const compareView = document.getElementById("compare-view");
+const checkBtn = document.getElementById("check-btn");
+const compareBtn = document.getElementById("compare-btn");
+
+function riskClass(score) {
+  if (score > 0.5) return "risk-high";
+  if (score > 0.25) return "risk-mid";
+  return "risk-low";
+}
+function riskLabel(score) {
+  if (score > 0.5) return "Risque élevé";
+  if (score > 0.25) return "Risque modéré";
+  return "Risque faible";
+}
+
+async function fetchRisk(icao) {
+  const resp = await fetch(`/risk/${icao}`);
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => ({}));
+    throw new Error(body.detail || `Erreur ${resp.status}`);
+  }
+  return resp.json();
+}
+
+function renderSingle(data) {
+  const cls = riskClass(data.disruption_risk_score);
+  const pct = Math.round(data.disruption_risk_score * 100);
+  const w = data.current_weather;
+  const c = data.live_traffic_congestion;
+
+  singleView.innerHTML = `
+    <div class="card">
+      <h2>${data.airport.name} <span class="muted">(${data.airport.icao})</span></h2>
+      <div class="sub">Mis à jour ${new Date(data.queried_at).toLocaleString("fr-FR")} · horizon de prévision : +${data.forecast_horizon_hours}h</div>
+      <div class="risk-row">
+        <div class="risk-score">${pct}%</div>
+        <div class="risk-pill ${cls}"><span class="dot"></span>${riskLabel(data.disruption_risk_score)}</div>
+      </div>
+      <div class="grid">
+        <div class="stat"><div class="label">Température</div><div class="value">${w.temperature_2m}°C</div></div>
+        <div class="stat"><div class="label">Vent</div><div class="value">${w.windspeed_10m} km/h</div></div>
+        <div class="stat"><div class="label">Rafales</div><div class="value">${w.windgusts_10m} km/h</div></div>
+        <div class="stat"><div class="label">Précipitations</div><div class="value">${w.precipitation} mm</div></div>
+        <div class="stat"><div class="label">Couverture nuageuse</div><div class="value">${w.cloudcover}%</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Trafic aérien en direct</h2>
+      <div class="sub">Avions détectés en ce moment autour de l'aéroport (OpenSky Network)</div>
+      ${c ? `
+        <div class="grid">
+          <div class="stat"><div class="label">Avions détectés</div><div class="value">${c.n_aircraft}</div></div>
+          <div class="stat"><div class="label">Au sol</div><div class="value">${c.n_on_ground}</div></div>
+          <div class="stat"><div class="label">Basse altitude</div><div class="value">${c.n_low_altitude}</div></div>
+          <div class="stat"><div class="label">Vitesse moyenne</div><div class="value">${Math.round(c.avg_velocity)} m/s</div></div>
+        </div>
+      ` : `<div class="error-box">Trafic en direct indisponible : ${data.live_traffic_error || "erreur inconnue"}</div>`}
+    </div>
+  `;
+}
+
+checkBtn.addEventListener("click", async () => {
+  compareView.innerHTML = "";
+  singleView.innerHTML = `<div class="card"><span class="spinner"></span> Récupération des données en direct…</div>`;
+  checkBtn.disabled = true;
+  try {
+    const data = await fetchRisk(select.value);
+    renderSingle(data);
+  } catch (e) {
+    singleView.innerHTML = `<div class="card"><div class="error-box">${e.message}</div></div>`;
+  } finally {
+    checkBtn.disabled = false;
+  }
+});
+
+compareBtn.addEventListener("click", async () => {
+  singleView.innerHTML = "";
+  compareBtn.disabled = true;
+  const icaos = Object.keys(AIRPORTS);
+  compareView.innerHTML = `
+    <div class="card">
+      <h2>Comparaison de tous les aéroports</h2>
+      <div class="sub">Chargement séquentiel (limite de fréquence de l'API OpenSky en accès anonyme)</div>
+      <table>
+        <thead><tr><th>Aéroport</th><th>Risque à +3h</th><th>Avions en direct</th><th>Statut</th></tr></thead>
+        <tbody id="compare-body"></tbody>
+      </table>
+    </div>
+  `;
+  const body = document.getElementById("compare-body");
+  for (const icao of icaos) {
+    const row = document.createElement("tr");
+    row.innerHTML = `<td>${AIRPORTS[icao]}</td><td colspan="3"><span class="spinner"></span> en cours…</td>`;
+    body.appendChild(row);
+    try {
+      const data = await fetchRisk(icao);
+      const pct = Math.round(data.disruption_risk_score * 100);
+      const cls = riskClass(data.disruption_risk_score);
+      row.innerHTML = `
+        <td>${AIRPORTS[icao]}</td>
+        <td><span class="risk-pill ${cls}"><span class="dot"></span>${pct}%</span></td>
+        <td>${data.live_traffic_congestion ? data.live_traffic_congestion.n_aircraft : "—"}</td>
+        <td class="muted">OK</td>
+      `;
+    } catch (e) {
+      row.innerHTML = `<td>${AIRPORTS[icao]}</td><td colspan="2" class="muted">indisponible</td><td class="muted">${e.message}</td>`;
+    }
+    // Petite pause pour rester raisonnable vis-à-vis de l'API OpenSky anonyme
+    await new Promise((r) => setTimeout(r, 600));
+  }
+  compareBtn.disabled = false;
+});
+
+// Chargement initial
+checkBtn.click();
+</script>
+</body>
+</html>

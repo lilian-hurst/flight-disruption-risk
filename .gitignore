@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+data/*.csv
+models/emissions.csv
+.env
+
+# Le modèle entraîné (model.json, airport_encoder.json, metrics.json) est
+# volontairement versionné pour que le projet soit utilisable dès le clone,
+# sans avoir à relancer l'entraînement.
